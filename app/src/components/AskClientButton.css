@@ -1,0 +1,10 @@
+.ask-client-form { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 420px; }
+.ask-client-form textarea {
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 7px 9px;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
+  resize: vertical;
+}
+.ask-client-form__actions { display: flex; gap: 6px; }

@@ -1,0 +1,74 @@
+.trace-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(27, 36, 48, 0.28);
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+}
+.trace-drawer {
+  width: min(480px, 94vw);
+  height: 100vh;
+  background: var(--paper-raised);
+  box-shadow: -10px 0 40px rgba(27, 36, 48, 0.18);
+  display: flex;
+  flex-direction: column;
+  animation: slide-in 160ms ease-out;
+}
+@keyframes slide-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.trace-drawer__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--rule);
+  gap: 10px;
+}
+.trace-drawer__key { font-size: 11px; color: var(--ink-faint); margin-bottom: 3px; }
+.trace-drawer__head h3 { margin: 0; font-size: 16px; line-height: 1.3; }
+.trace-drawer__body { padding: 16px 18px; overflow-y: auto; flex: 1; }
+
+.trace-block { margin-bottom: 20px; }
+.trace-block h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+.trace-rule { font-size: 12.5px; color: var(--ink-soft); margin: 0; line-height: 1.5; }
+
+.trace-versions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.trace-versions__cell {
+  background: var(--paper-sunken);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.trace-versions__cell span { font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.03em; }
+.trace-versions__cell strong { font-size: 13px; }
+.trace-versions__cell--empty { opacity: 0.45; }
+.trace-versions__cell--current { background: var(--accent-soft); outline: 1px solid var(--accent); }
+
+.trace-inputs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.trace-input-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12px;
+}
+.trace-input-link:hover { background: var(--accent-soft); }
+.trace-input-link span:nth-child(2) { flex: 1; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

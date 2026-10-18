@@ -1,0 +1,40 @@
+# Dependencies and build output
+node_modules/
+app/node_modules/
+app/dist/
+app/dist-ssr/
+
+# Vercel
+.vercel/
+app/.vercel/
+
+# Test output
+app/test-results/
+app/playwright-report/
+app/node_modules/.tmp/
+
+# Env / secrets - never commit these
+.env
+.env.*
+*.local
+!app/*.local
+app/.env
+app/.env.*
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Source-provider materials, kept out of the public repo by request -
+# the live app's own copy (app/public/packet.json) is still tracked and deployed.
+/Case_Study_Redesign_the_Tax_Workpaper*.pdf
+/okafor_lindqvist_2025_packet*.json
+
+# Project working notes - kept local only, not published.
+/CLAUDE.md

@@ -1,0 +1,10 @@
+.portal-approval { display: flex; align-items: center; gap: 12px; }
+.portal-list { display: flex; flex-direction: column; gap: 8px; }
+.portal-qa { font-size: 12.5px; }
+.portal-qa strong { display: block; margin-bottom: 3px; }
+.portal-qa p { margin: 0 0 4px; color: var(--ink-soft); }
+.portal-qa ul { margin: 4px 0 4px; padding-left: 18px; color: var(--ink-soft); }
+.portal-question-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.portal-answer { background: var(--paper-sunken); padding: 6px 9px; border-radius: var(--radius-sm); }
+.portal-answer-form { display: flex; gap: 6px; margin-top: 4px; }
+.portal-answer-form input { flex: 1; font-size: 12.5px; padding: 6px 9px; border: 1px solid var(--rule-strong); border-radius: var(--radius-sm); }

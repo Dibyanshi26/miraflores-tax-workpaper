@@ -1,0 +1,7 @@
+.cf-subhead { font-size: 11.5px; text-transform: uppercase; color: var(--ink-faint); margin: 14px 0 6px; }
+.cf-basis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.cf-basis-grid h4 { margin: 0 0 8px; font-size: 13px; text-transform: capitalize; }
+.cf-rule { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 8px; }
+.cf-dates { display: flex; flex-wrap: wrap; gap: 6px; }
+.cf-dates span { font-size: 11px; background: var(--paper-sunken); padding: 3px 8px; border-radius: 999px; }
+.cf-changes { margin: 0; padding-left: 18px; font-size: 12.5px; line-height: 1.8; }

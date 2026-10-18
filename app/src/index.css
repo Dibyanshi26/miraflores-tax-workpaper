@@ -1,0 +1,91 @@
+@import "@fontsource/public-sans/400.css";
+@import "@fontsource/public-sans/500.css";
+@import "@fontsource/public-sans/600.css";
+@import "@fontsource/public-sans/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+
+:root {
+  color-scheme: light;
+
+  /* paper + ink */
+  --paper: #f4f3ee;
+  --paper-raised: #fbfaf6;
+  --paper-sunken: #ebe9e1;
+  --ink: #1b2430;
+  --ink-soft: #4a5566;
+  --ink-faint: #828d9c;
+  --rule: #d8d5c9;
+  --rule-strong: #c3bfae;
+
+  /* status */
+  --status-verified: #2f7a4f;
+  --status-verified-bg: #e4f1e8;
+  --status-open: #b9790a;
+  --status-open-bg: #fbf0db;
+  --status-blocking: #b3382c;
+  --status-blocking-bg: #fbe6e2;
+  --status-adjustment: #6a4bb3;
+  --status-adjustment-bg: #ece5f8;
+  --status-info: #2e6b8f;
+  --status-info-bg: #e2eef4;
+
+  /* highlighter thread */
+  --highlight: #ffe066;
+  --highlight-strong: #ffd12e;
+
+  --accent: #2b3f66;
+  --accent-soft: #e7ebf3;
+
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --shadow-card: 0 1px 2px rgba(27, 36, 48, 0.06), 0 1px 1px rgba(27, 36, 48, 0.04);
+
+  --font-ui: "Public Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a { color: inherit; }
+
+.num {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+button {
+  font-family: inherit;
+}
+
+::selection {
+  background: var(--highlight);
+  color: var(--ink);
+}
+
+/* scrollbars - keep narrow, paper-toned */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 6px; }

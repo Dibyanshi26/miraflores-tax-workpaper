@@ -1,0 +1,9 @@
+.changes-meta { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 12.5px; }
+.changes-diag-list { display: flex; flex-direction: column; gap: 6px; }
+.changes-diag-card { display: flex; gap: 10px; align-items: flex-start; }
+.changes-diag-card p { margin: 2px 0 0; font-size: 12px; color: var(--ink-soft); }
+.changes-timeline { display: flex; flex-direction: column; gap: 2px; max-height: 480px; overflow-y: auto; }
+.changes-timeline-row { display: grid; grid-template-columns: 160px 1fr auto; gap: 10px; padding: 6px 8px; font-size: 12px; border-radius: var(--radius-sm); }
+.changes-timeline-row--workpaper { background: var(--accent-soft); }
+.changes-timeline-time { color: var(--ink-faint); white-space: nowrap; }
+.changes-timeline-label { text-transform: capitalize; }

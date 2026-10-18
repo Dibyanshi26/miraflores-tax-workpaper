@@ -1,0 +1,14 @@
+.rs-row--highlight td { background: var(--highlight); }
+.rs-trace-btn {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: 10.5px;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-left: 8px;
+}
+.rs-area-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.rs-area-card { cursor: pointer; display: flex; flex-direction: column; gap: 8px; }
+.rs-area-card h4 { margin: 0; font-size: 13px; text-transform: capitalize; }
+.rs-area-card__row { display: flex; justify-content: space-between; align-items: center; }
