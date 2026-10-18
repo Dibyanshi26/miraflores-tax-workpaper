@@ -15,7 +15,8 @@ submitting.
 - **Scaffolded the app**: Vite + React + TypeScript, the packet copied to `public/packet.json`,
   the event-sourcing store (IndexedDB + BroadcastChannel for multi-tab roles), and the
   design system (paper/ink-navy palette, status colors, the highlighter-thread trace
-  pattern) from the brief in `CLAUDE.md`.
+  pattern) from a planning document I wrote beforehand, laying out the brief, my design
+  decisions, and my own error analysis of the packet, which guided Claude Code throughout.
 - **Wrote the independent checks engine** (`app/src/data/checks/run.ts`) - 20 failing checks
   and 11 passing checks, each a readable function that recomputes an expected value from raw
   packet data and compares it to the engine's output.
