@@ -8,6 +8,7 @@ import { latestSignOffStatus } from "../store/fold";
 import type { TargetRef } from "../types/domain";
 import { areaForLine, AREA_LABELS } from "./areaClassifier";
 import type { CheckResult } from "./checks/types";
+import { checkApprovalState } from "./checks/effect";
 
 // Rough per-event-type time estimate (hours) - there's no stopwatch in this prototype,
 // so this is a transparent, documented proxy rather than a real timer.
@@ -86,7 +87,9 @@ export function computeAreaStats(idx: PacketIndex, derived: DerivedState, checks
 
   const openByArea = new Map<string, number>();
   for (const c of checks) {
-    if (c.status === "fail") openByArea.set(c.area, (openByArea.get(c.area) ?? 0) + 1);
+    if (c.status === "fail" && checkApprovalState(idx, derived, c).isOpen) {
+      openByArea.set(c.area, (openByArea.get(c.area) ?? 0) + 1);
+    }
   }
 
   const signOffs = returnSignOffStates(derived);

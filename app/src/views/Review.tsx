@@ -3,11 +3,13 @@ import { useStore, actorById } from "../store/useStore";
 import { PageHeader, Section, Card } from "../components/Section";
 import { StatusBadge, SeverityBadge } from "../components/StatusBadge";
 import { AskClientButton } from "../components/AskClientButton";
+import { AdjustmentDecision } from "../components/AdjustmentDecision";
 import { computeFingerprint, latestSignOffStatus } from "../store/fold";
-import { fmtDateTime } from "../data/index";
+import { fmtDateTime, fmtMoney } from "../data/index";
 import { canReview, needsPartnerSignOff, DEFAULT_STANDARDS } from "../auth/roles";
 import { JUDGMENT_SEEDS } from "../data/judgmentItems";
 import { runIndependentChecks } from "../data/checks/run";
+import { checkDecision, checkApprovalState, computeCheckEffect } from "../data/checks/effect";
 import { aggregateAcceptedAdjustments } from "../data/taxEffect";
 import "./Review.css";
 
@@ -30,6 +32,18 @@ export function Review() {
     return { note: n, resolved };
   });
   const openBlocking = notesWithStatus.filter((n) => !n.resolved && n.note.payload.severity === "blocking");
+
+  // Every accepted check whose combined effect ever crossed the $1,000 partner-approval
+  // threshold - awaiting, approved, or (rare) reopened by a later change - so this page is
+  // the one place that shows every adjustment approval's full history, not just the ones
+  // currently pending.
+  const adjustmentsNeedingApproval = useMemo(
+    () =>
+      index
+        ? checks.filter((c) => c.status === "fail" && checkDecision(derived, c) === "accepted" && checkApprovalState(index, derived, c).needsApproval)
+        : [],
+    [index, derived, checks]
+  );
 
   const accepted = index
     ? aggregateAcceptedAdjustments(index.latestVersion, derived.activeEvents)
@@ -101,6 +115,31 @@ export function Review() {
               {!resolved && <button className="btn btn--sm" onClick={() => void resolveNote(note.id, note.target.id)}>Resolve</button>}
             </Card>
           ))}
+        </div>
+      </Section>
+
+      <Section
+        title={`Adjustment approvals (${adjustmentsNeedingApproval.length})`}
+        subtitle="Accepted checks whose combined federal/California effect is over $1,000 - each needs a partner's approval before it counts toward the workpaper."
+      >
+        <div className="review-note-list">
+          {adjustmentsNeedingApproval.length === 0 && <Card><span className="muted">No adjustment needs partner approval right now.</span></Card>}
+          {index &&
+            adjustmentsNeedingApproval.map((c) => {
+              const effect = computeCheckEffect(index, c);
+              return (
+                <Card key={c.code} className="review-note-card approval-queue-row">
+                  <div className="approval-queue-row__head">
+                    <span className="open-item-row__sentence">{c.title}</span>
+                    <span className="open-item-row__effect num">
+                      {effect.federal !== 0 && <span>Fed {fmtMoney(effect.federal)}</span>}
+                      {effect.california !== 0 && <span>CA {fmtMoney(effect.california)}</span>}
+                    </span>
+                  </div>
+                  <AdjustmentDecision check={c} />
+                </Card>
+              );
+            })}
         </div>
       </Section>
 

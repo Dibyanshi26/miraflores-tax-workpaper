@@ -41,10 +41,13 @@ test.describe("home screen", () => {
     await expect(strip.getByText("Accepted so far")).toBeVisible();
     await expect(strip.getByText("Workpaper (accepted)").first()).toBeVisible();
     await expect(strip.getByText("Workpaper (all pending accepted)").first()).toBeVisible();
-    const pendingCount = await strip.locator(".strip-count__value").last().textContent();
+    await expect(strip.getByText("Awaiting approval")).toBeVisible();
+    const pendingCount = await strip.locator(".strip-count", { hasText: "Pending adjustments" }).locator(".strip-count__value").textContent();
     expect(Number(pendingCount)).toBeGreaterThan(0);
     const acceptedCount = await strip.locator(".strip-count__value--accepted").textContent();
     expect(Number(acceptedCount)).toBe(0);
+    const awaitingCount = await strip.locator(".strip-count__value--awaiting").textContent();
+    expect(Number(awaitingCount)).toBe(0);
 
     // "Accepted so far" and "Pending adjustments" sit side by side in one row, not stacked.
     const counts = strip.locator(".strip-count");
@@ -62,12 +65,15 @@ test.describe("home screen", () => {
     expect(before).toBe(0); // nothing accepted yet - engine and workpaper match, no highlighted cells
 
     await page.getByRole("link", { name: "Checks", exact: true }).click();
-    await page.getByText("Schedule C gross receipts double-counts a 1099-K").click();
+    await page.getByText("Mileage log page is a duplicate scan").click();
     await page.getByRole("button", { name: "Accept adjustment" }).click();
+    await page.getByRole("button", { name: "Confirm & accept" }).click();
+    await expect(page.getByText("Adjustment accepted")).toBeVisible(); // under the $1,000 threshold - no approval needed
 
     await page.getByRole("link", { name: "Home", exact: true }).click();
     await expect(page.locator("table.strip-table").first().locator(".strip-table__changed").first()).toBeVisible();
     await expect(page.locator(".strip-count__value--accepted")).toHaveText("1");
+    await expect(page.locator(".strip-count__value--awaiting")).toHaveText("0");
   });
 
   test("a payment-correction check moves the federal Payments row, not Total tax, on the top strip", async ({ page }) => {
@@ -79,6 +85,7 @@ test.describe("home screen", () => {
     await page.getByRole("link", { name: "Checks", exact: true }).click();
     await page.getByText("Q4 federal estimated payment taken from an uncertain client estimate").click();
     await page.getByRole("button", { name: "Accept adjustment" }).click();
+    await page.getByRole("button", { name: "Confirm & accept" }).click();
 
     await page.getByRole("link", { name: "Home", exact: true }).click();
     await page.waitForSelector(".totals-strip");

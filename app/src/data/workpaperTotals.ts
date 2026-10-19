@@ -11,7 +11,7 @@ import type { PacketIndex } from "./index";
 import type { DerivedState } from "../store/fold";
 import { aggregateAcceptedAdjustments } from "./taxEffect";
 import { runIndependentChecks } from "./checks/run";
-import { checkDecision, computeCheckEffect, computeLiveSchCProfitDelta } from "./checks/effect";
+import { checkDecision, checkTargetId, checkApprovalState, computeCheckEffect, computeLiveSchCProfitDelta } from "./checks/effect";
 
 export interface JurisdictionTotals {
   agi: number;
@@ -25,6 +25,7 @@ export interface WorkpaperTotals {
   california: { engine: JurisdictionTotals; accepted: JurisdictionTotals; allPending: JurisdictionTotals };
   pendingAdjustments: number;
   acceptedCount: number;
+  awaitingApprovalCount: number; // accepted, over the $1,000 threshold, not yet partner-approved - excluded from the `accepted` column below, included in `allPending`
 }
 
 // taxDelta shifts AGI and total tax together; paymentsReduction is subtracted from
@@ -38,13 +39,13 @@ function shift(base: JurisdictionTotals, taxDelta: number, paymentsReduction: nu
 
 export function computeWorkpaperTotals(idx: PacketIndex, derived: DerivedState): WorkpaperTotals {
   const v3 = idx.latestVersion;
-  const accepted = aggregateAcceptedAdjustments(v3, derived.activeEvents);
 
   const federalEngine: JurisdictionTotals = { agi: v3.summary.federal.agi, totalTax: v3.summary.federal.total_tax, payments: v3.summary.federal.payments, balanceDue: v3.summary.federal.balance_due };
   const californiaEngine: JurisdictionTotals = { agi: v3.summary.california.ca_agi, totalTax: v3.summary.california.total_tax, payments: v3.summary.california.payments, balanceDue: v3.summary.california.balance_due };
 
   const checks = runIndependentChecks(idx, computeLiveSchCProfitDelta(derived));
-  const pending = checks.filter((c) => c.status === "fail" && checkDecision(derived, c) === "pending");
+  const failed = checks.filter((c) => c.status === "fail");
+  const pending = failed.filter((c) => checkDecision(derived, c) === "pending");
   const pendingSum = pending.reduce(
     (acc, c) => {
       const e = computeCheckEffect(idx, c);
@@ -55,20 +56,40 @@ export function computeWorkpaperTotals(idx: PacketIndex, derived: DerivedState):
     },
     { federalTax: 0, californiaTax: 0, federalPayments: 0, californiaPayments: 0 }
   );
-  const acceptedCount = checks.filter((c) => c.status === "fail" && checkDecision(derived, c) === "accepted").length;
+  const acceptedCount = failed.filter((c) => checkDecision(derived, c) === "accepted").length;
+
+  // Checks that are accepted but still waiting on a required partner approval - their
+  // adjustment events are excluded from the real "accepted" column below (it only counts
+  // what's actually resolved), but still fold into `allPending`, the "what if everything
+  // were accepted" hypothetical, since that column is deliberately independent of
+  // approval state.
+  const awaitingApprovalTargetIds = new Set<string>();
+  for (const c of failed) {
+    if (checkDecision(derived, c) !== "accepted") continue;
+    const approval = checkApprovalState(idx, derived, c);
+    if (approval.needsApproval && !approval.approved) awaitingApprovalTargetIds.add(checkTargetId(c));
+  }
+  const awaitingApprovalCount = awaitingApprovalTargetIds.size;
+
+  const allAccepted = aggregateAcceptedAdjustments(v3, derived.activeEvents);
+  const resolvedEvents = derived.activeEvents.filter(
+    (e) => !(e.type === "adjustment" && e.payload.status === "accepted" && awaitingApprovalTargetIds.has(e.target.id))
+  );
+  const resolvedAccepted = aggregateAcceptedAdjustments(v3, resolvedEvents);
 
   return {
     federal: {
       engine: federalEngine,
-      accepted: shift(federalEngine, accepted.federal.tax, accepted.federal.payments),
-      allPending: shift(federalEngine, accepted.federal.tax + pendingSum.federalTax, accepted.federal.payments + pendingSum.federalPayments),
+      accepted: shift(federalEngine, resolvedAccepted.federal.tax, resolvedAccepted.federal.payments),
+      allPending: shift(federalEngine, allAccepted.federal.tax + pendingSum.federalTax, allAccepted.federal.payments + pendingSum.federalPayments),
     },
     california: {
       engine: californiaEngine,
-      accepted: shift(californiaEngine, accepted.california.tax, accepted.california.payments),
-      allPending: shift(californiaEngine, accepted.california.tax + pendingSum.californiaTax, accepted.california.payments + pendingSum.californiaPayments),
+      accepted: shift(californiaEngine, resolvedAccepted.california.tax, resolvedAccepted.california.payments),
+      allPending: shift(californiaEngine, allAccepted.california.tax + pendingSum.californiaTax, allAccepted.california.payments + pendingSum.californiaPayments),
     },
     pendingAdjustments: pending.length,
     acceptedCount,
+    awaitingApprovalCount,
   };
 }

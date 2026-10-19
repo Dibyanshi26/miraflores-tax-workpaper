@@ -2,7 +2,10 @@
 // and Home's ranked open-items list so the two never compute it differently.
 import type { PacketIndex } from "../index";
 import type { DerivedState } from "../../store/fold";
+import { latestSignOffStatus } from "../../store/fold";
+import { needsPartnerSignOff, DEFAULT_STANDARDS } from "../../auth/roles";
 import { computeTaxEffect, type TaxEffect } from "../taxEffect";
+import type { EventPayload, TargetRef } from "../../types/domain";
 import type { CheckResult } from "./types";
 
 export function computeCheckEffect(idx: PacketIndex, check: CheckResult): TaxEffect {
@@ -47,4 +50,131 @@ export function computeLiveSchCProfitDelta(derived: DerivedState): number {
     }
   }
   return delta;
+}
+
+// A short, editable starting point for "why" when a preparer accepts an adjustment - the
+// check's own first sentence of explanation, since that's already the citation-grounded
+// reason for the fix (e.g. "Corvane's supplemental statement (D11) gives adjusted cost
+// basis..."), not invented copy. Falls back to the one-line summary if explanation is
+// somehow empty.
+export function defaultAcceptReason(check: CheckResult): string {
+  const text = (check.explanation || check.summary).trim();
+  const match = /^[^.!?]*[.!?]/.exec(text);
+  return (match ? match[0] : text).trim();
+}
+
+export interface CheckApprovalState {
+  decision: CheckDecision;
+  needsApproval: boolean; // only meaningful when decision === "accepted" - combined fed/CA effect over the firm's partner-sign-off threshold
+  approved: boolean;
+  approvedByActorId?: string;
+  approvedAt?: string;
+  acceptedByActorId?: string;
+  acceptedAt?: string;
+  reason?: string;
+  // Still belongs in the open-items list / area open-item counts: true for "pending" and
+  // "rejected" (unchanged from before this feature), and for "accepted" only until it's
+  // either under the approval threshold or actually partner-approved.
+  isOpen: boolean;
+}
+
+// Partner approval reuses the same sign_off + fingerprint mechanism the whole-return
+// sign-off already uses (CLAUDE.md "Sign-offs store a fingerprint... reopens
+// automatically"), just targeted at one check instead of the return - so if anything new
+// happens on this check after an approval (a send-back note, a re-acceptance), the
+// fingerprint changes and the approval reopens automatically, with no separate "approval
+// was revoked" event needed.
+export function checkApprovalState(idx: PacketIndex, derived: DerivedState, check: CheckResult): CheckApprovalState {
+  const decision = checkDecision(derived, check);
+  const targetId = checkTargetId(check);
+  const events = derived.byTarget.get(targetId) ?? [];
+  const acceptedEvents = events.filter((e) => e.type === "adjustment" && e.payload.status === "accepted");
+  const lastAccepted = acceptedEvents[acceptedEvents.length - 1];
+
+  let needsApproval = false;
+  let approved = false;
+  let approvedByActorId: string | undefined;
+  let approvedAt: string | undefined;
+
+  if (decision === "accepted" && lastAccepted) {
+    const effect = computeCheckEffect(idx, check);
+    needsApproval = needsPartnerSignOff(effect.federal, effect.california, DEFAULT_STANDARDS.partnerSignOffThreshold);
+    if (needsApproval) {
+      const signOff = latestSignOffStatus(derived, targetId, "partner");
+      if (signOff && !signOff.reopened) {
+        approved = true;
+        approvedByActorId = signOff.event.actor;
+        approvedAt = signOff.event.at;
+      }
+    }
+  }
+
+  const resolved = decision === "accepted" && (!needsApproval || approved);
+
+  return {
+    decision,
+    needsApproval,
+    approved,
+    approvedByActorId,
+    approvedAt,
+    acceptedByActorId: lastAccepted?.actor,
+    acceptedAt: lastAccepted?.at,
+    reason: lastAccepted?.payload.reason,
+    isOpen: !resolved,
+  };
+}
+
+// Builds the adjustment event(s) for an accept/dismiss decision - one function so Checks,
+// Home's approval section, and Review all construct the exact same event shape per check
+// kind (manualEffect / whatIfId / proposedAdjustments), just with the caller's own reason.
+export function buildDecisionEvents(
+  check: CheckResult,
+  effects: TaxEffect,
+  status: "accepted" | "rejected",
+  reason: string
+): { type: "adjustment"; target: TargetRef; payload: EventPayload }[] {
+  const target: TargetRef = { kind: "check", id: checkTargetId(check), label: check.title };
+  if (check.manualEffect) {
+    return [
+      {
+        type: "adjustment",
+        target,
+        payload: {
+          amount: effects.federal,
+          category: check.effectKind === "payments" ? "manual_payments" : "manual",
+          reason,
+          status,
+          evidence_refs: check.evidence,
+          tax_effect_federal: effects.federal,
+          tax_effect_california: effects.california,
+        },
+      },
+    ];
+  }
+  if (check.whatIfId) {
+    return [
+      {
+        type: "adjustment",
+        target,
+        payload: {
+          amount: effects.federal,
+          category: "what_if",
+          what_if_id: check.whatIfId,
+          reason,
+          status,
+          evidence_refs: check.evidence,
+          tax_effect_federal: effects.federal,
+          tax_effect_california: effects.california,
+        },
+      },
+    ];
+  }
+  if (check.proposedAdjustments.length === 0) {
+    return [{ type: "adjustment", target, payload: { amount: 0, category: "none", reason, status, evidence_refs: check.evidence } }];
+  }
+  return check.proposedAdjustments.map((adj) => ({
+    type: "adjustment" as const,
+    target,
+    payload: { amount: adj.amount, category: adj.category, reason, status, evidence_refs: check.evidence, extra: { caSourceOnly: adj.caSourceOnly ?? false } },
+  }));
 }

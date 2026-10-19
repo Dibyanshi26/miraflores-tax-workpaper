@@ -4,58 +4,22 @@ import { PageHeader, Section, Card } from "../components/Section";
 import { StatusBadge, SeverityBadge } from "../components/StatusBadge";
 import { EvidenceRefs } from "../components/EvidenceRefs";
 import { AskClientButton } from "../components/AskClientButton";
+import { AdjustmentDecision } from "../components/AdjustmentDecision";
 import { runIndependentChecks } from "../data/checks/run";
 import type { CheckResult } from "../data/checks/types";
-import { computeCheckEffect, checkDecision, checkTargetId, computeLiveSchCProfitDelta } from "../data/checks/effect";
+import { computeCheckEffect, checkTargetId, computeLiveSchCProfitDelta } from "../data/checks/effect";
 import { fmtMoney } from "../data/index";
 import { AREA_LABELS } from "../data/areaClassifier";
 import "./Checks.css";
 
 
 function CheckCard({ check }: { check: CheckResult }) {
-  const { index, appendEvent, derived } = useStore();
+  const { index } = useStore();
   const [open, setOpen] = useState(false);
   if (!index) return null;
 
   const targetId = checkTargetId(check);
-  const decision = checkDecision(derived, check);
   const effects = computeCheckEffect(index, check);
-
-  async function decide(status: "accepted" | "rejected") {
-    if (check.manualEffect) {
-      await appendEvent({
-        type: "adjustment",
-        target: { kind: "check", id: targetId, label: check.title },
-        payload: {
-          amount: effects.federal, category: check.effectKind === "payments" ? "manual_payments" : "manual",
-          reason: check.explanation, status, evidence_refs: check.evidence,
-          tax_effect_federal: effects.federal, tax_effect_california: effects.california,
-        },
-      });
-      return;
-    }
-    if (check.whatIfId) {
-      await appendEvent({
-        type: "adjustment",
-        target: { kind: "check", id: targetId, label: check.title },
-        payload: {
-          amount: effects.federal, category: "what_if", what_if_id: check.whatIfId, reason: check.explanation, status, evidence_refs: check.evidence,
-          tax_effect_federal: effects.federal, tax_effect_california: effects.california,
-        },
-      });
-      return;
-    }
-    for (const adj of check.proposedAdjustments) {
-      await appendEvent({
-        type: "adjustment",
-        target: { kind: "check", id: targetId, label: check.title },
-        payload: { amount: adj.amount, category: adj.category, reason: check.explanation, status, evidence_refs: check.evidence, extra: { caSourceOnly: adj.caSourceOnly ?? false } },
-      });
-    }
-    if (check.proposedAdjustments.length === 0) {
-      await appendEvent({ type: "adjustment", target: { kind: "check", id: targetId, label: check.title }, payload: { amount: 0, category: "none", reason: check.explanation, status, evidence_refs: check.evidence } });
-    }
-  }
 
   return (
     <Card className="check-card">
@@ -101,16 +65,7 @@ function CheckCard({ check }: { check: CheckResult }) {
           )}
           {check.status === "fail" && (
             <div className="check-card__decision">
-              {decision !== "pending" ? (
-                <StatusBadge status={decision === "accepted" ? "verified" : "neutral"}>
-                  {decision === "accepted" ? "Adjustment accepted" : "Dismissed"}
-                </StatusBadge>
-              ) : (
-                <>
-                  <button className="btn btn--sm btn--primary" onClick={() => void decide("accepted")}>Accept adjustment</button>
-                  <button className="btn btn--sm" onClick={() => void decide("rejected")}>Dismiss</button>
-                </>
-              )}
+              <AdjustmentDecision check={check} />
               {check.needsClientInput && <AskClientButton target={{ kind: "check", id: targetId, label: check.title }} defaultText={check.summary} />}
             </div>
           )}

@@ -2,13 +2,15 @@ import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useStore, actorById } from "../store/useStore";
 import { PageHeader, Section, Card } from "../components/Section";
-import { StatusBadge, SeverityBadge, type Severity } from "../components/StatusBadge";
+import { StatusBadge, SeverityBadge, type Severity, type Status } from "../components/StatusBadge";
+import { AdjustmentDecision } from "../components/AdjustmentDecision";
 import { runIndependentChecks } from "../data/checks/run";
-import { computeCheckEffect, computeLiveSchCProfitDelta } from "../data/checks/effect";
+import { computeCheckEffect, computeLiveSchCProfitDelta, checkDecision, checkApprovalState } from "../data/checks/effect";
 import { accountedForDocumentIds, fmtDate, fmtDateTime, fmtMoney, visibleDocuments } from "../data/index";
 import { latestSignOffStatus } from "../store/fold";
 import { computeAreaStats } from "../data/areaStats";
 import { computeWorkpaperTotals, type JurisdictionTotals } from "../data/workpaperTotals";
+import type { CheckResult } from "../data/checks/types";
 import "./Home.css";
 
 function ensureSentence(s: string): string {
@@ -19,6 +21,7 @@ function ensureSentence(s: string): string {
 interface OpenItem {
   key: string;
   severity: Severity;
+  badgeOverride?: { status: Status; text: string }; // accepted-but-awaiting-approval items replace the severity badge with this
   category: string;
   sentence: string;
   federal: number;
@@ -76,22 +79,30 @@ export function Home() {
     });
   }, [derived]);
 
-  // One ranked list: every failed check plus every open blocking note, sorted by the
-  // combined absolute federal + California tax effect, each shown once.
+  // One ranked list: every failed check that's still open (not yet dismissed, or accepted
+  // and fully resolved - approved if it needed approval) plus every open blocking note,
+  // sorted by the combined absolute federal + California tax effect, each shown once.
   const openItems: OpenItem[] = useMemo(() => {
     if (!index) return [];
-    const items: OpenItem[] = failedChecks.map((c) => {
+    const items: OpenItem[] = [];
+    for (const c of failedChecks) {
+      const approval = checkApprovalState(index, derived, c);
+      if (!approval.isOpen) continue;
       const effect = computeCheckEffect(index, c);
-      return {
+      items.push({
         key: `check:${c.code}`,
         severity: c.severity,
+        badgeOverride:
+          approval.decision === "accepted" && approval.needsApproval
+            ? { status: "open", text: "Awaiting partner approval" }
+            : undefined,
         category: "Check",
         sentence: c.summary,
         federal: effect.federal,
         california: effect.california,
         onClick: () => navigate("/checks"),
-      };
-    });
+      });
+    }
     for (const n of openBlockingNotes) {
       items.push({
         key: `note:${n.id}`,
@@ -104,7 +115,18 @@ export function Home() {
       });
     }
     return items.sort((a, b) => (Math.abs(b.federal) + Math.abs(b.california)) - (Math.abs(a.federal) + Math.abs(a.california)));
-  }, [index, failedChecks, openBlockingNotes, navigate]);
+  }, [index, derived, failedChecks, openBlockingNotes, navigate]);
+
+  // Partner-only: adjustments a preparer accepted whose combined effect crosses the
+  // $1,000 threshold, still waiting on this partner's approval.
+  const awaitingMyApproval: CheckResult[] = useMemo(() => {
+    if (!index || currentActor.role !== "partner") return [];
+    return failedChecks.filter((c) => {
+      if (checkDecision(derived, c) !== "accepted") return false;
+      const approval = checkApprovalState(index, derived, c);
+      return approval.needsApproval && !approval.approved;
+    });
+  }, [index, derived, failedChecks, currentActor]);
 
   const unaccountedDocs = useMemo(() => {
     if (!index) return [];
@@ -150,6 +172,36 @@ export function Home() {
         subtitle={isClient ? "Here's what's open on your return." : `Open items across the Okafor-Lindqvist 2025 workpaper, as of ${fmtDate(asOf)}.`}
       />
 
+      {currentActor.role === "partner" && (
+        <Section
+          title={`Waiting for your approval (${awaitingMyApproval.length})`}
+          subtitle="Accepted adjustments whose combined federal/California effect is over $1,000 - these need your approval before they count toward the workpaper."
+        >
+          {awaitingMyApproval.length === 0 ? (
+            <Card><span className="muted">Nothing waiting on your approval.</span></Card>
+          ) : (
+            <div className="open-item-list">
+              {awaitingMyApproval.map((c) => {
+                const effect = computeCheckEffect(index, c);
+                return (
+                  <Card key={c.code} className="approval-queue-row">
+                    <div className="approval-queue-row__head">
+                      <span className="open-item-row__category">Check</span>
+                      <span className="open-item-row__sentence">{c.summary}</span>
+                      <span className="open-item-row__effect num">
+                        {effect.federal !== 0 && <span>Fed {fmtMoney(effect.federal)}</span>}
+                        {effect.california !== 0 && <span>CA {fmtMoney(effect.california)}</span>}
+                      </span>
+                    </div>
+                    <AdjustmentDecision check={c} />
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </Section>
+      )}
+
       {!isClient && totals && (
         <Section title="Engine v3 vs. workpaper">
           <Card className="totals-strip">
@@ -164,6 +216,10 @@ export function Home() {
                 <span className="strip-group__label">Pending adjustments</span>
                 <div className="strip-count__value">{totals.pendingAdjustments}</div>
               </div>
+              <div className="strip-count">
+                <span className="strip-group__label">Awaiting approval</span>
+                <div className="strip-count__value strip-count__value--awaiting">{totals.awaitingApprovalCount}</div>
+              </div>
             </div>
           </Card>
         </Section>
@@ -177,7 +233,7 @@ export function Home() {
             <div className="open-item-list">
               {openItems.map((it) => (
                 <Card key={it.key} className="open-item-row" onClick={it.onClick}>
-                  <SeverityBadge severity={it.severity} />
+                  {it.badgeOverride ? <StatusBadge status={it.badgeOverride.status}>{it.badgeOverride.text}</StatusBadge> : <SeverityBadge severity={it.severity} />}
                   <span className="open-item-row__category">{it.category}</span>
                   <span className="open-item-row__sentence">{it.sentence}</span>
                   <span className="open-item-row__effect num">

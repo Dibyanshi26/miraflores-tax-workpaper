@@ -186,7 +186,7 @@ export const useStore = create<AppState>((set, get) => ({
   resetEventLog: async () => {
     await dbClearEvents();
     await dbPutEvents(SEED_QUESTIONS);
-    set({ events: [...SEED_QUESTIONS], derived: computeDerived(SEED_QUESTIONS, get().asOf) });
+    set({ events: [...SEED_QUESTIONS], asOf: DEFAULT_AS_OF, derived: computeDerived(SEED_QUESTIONS, DEFAULT_AS_OF) });
     broadcastReset();
   },
 

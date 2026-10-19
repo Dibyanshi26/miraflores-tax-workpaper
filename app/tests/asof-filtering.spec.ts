@@ -59,19 +59,22 @@ test.describe("as-of clock gates documents everywhere", () => {
     await page.getByRole("link", { name: "Checks", exact: true }).click();
     await page.getByText("RSU sales taxed with $0 basis").click();
     await page.getByRole("button", { name: "Accept adjustment" }).click();
+    await page.getByRole("button", { name: "Confirm & accept" }).click();
 
-    // Recorded "now" (at the default 2026-06-23 as-of), so it's accepted immediately.
-    await expect(page.getByText("Adjustment accepted")).toBeVisible();
+    // Recorded "now" (at the default 2026-06-23 as-of), so it's accepted immediately. This
+    // check's effect is well over $1,000, so it needs partner approval rather than showing
+    // as a plain "Adjustment accepted".
+    await expect(page.getByText("Awaiting partner approval")).toBeVisible();
 
     // Winding the clock back before the event's own `at` hides its effect everywhere -
     // the event itself (and the fold built from it) is as-of filtered, not just documents.
     await setAsOfPct(page, pctForDate("2026-01-05T00:00:00Z"));
-    await expect(page.getByText("Adjustment accepted")).toHaveCount(0);
+    await expect(page.getByText("Awaiting partner approval")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Accept adjustment" })).toBeVisible();
 
     // Moving it back forward restores the accepted state - nothing was lost, it's just
     // filtered out of the current fold.
     await setAsOfPct(page, pctForDate("2026-06-23T23:59:59Z"));
-    await expect(page.getByText("Adjustment accepted")).toBeVisible();
+    await expect(page.getByText("Awaiting partner approval")).toBeVisible();
   });
 });
