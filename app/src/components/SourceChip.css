@@ -1,0 +1,61 @@
+.source-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 11px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  cursor: pointer;
+  text-align: left;
+}
+.source-chip:hover { border-color: var(--rule-strong); background: var(--accent-soft); }
+.source-chip--missing { color: var(--ink-faint); cursor: default; font-size: 12px; }
+
+.source-chip__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 12px;
+  line-height: 1.5;
+  /* no truncation anywhere in this row - long issuer names or fields just wrap */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.source-chip__doc { font-weight: 700; color: var(--accent); flex: none; }
+.source-chip__issuer { color: var(--ink); }
+.source-chip__sep { color: var(--ink-faint); flex: none; }
+.source-chip__field { color: var(--ink-soft); }
+.source-chip__value { font-weight: 600; }
+.source-chip__confidence { color: var(--ink-faint); font-size: 11px; }
+.source-chip__confidence--low { color: var(--status-open); font-weight: 600; }
+.source-chip__reveal {
+  border: none;
+  background: var(--status-blocking-bg);
+  color: var(--status-blocking);
+  font-size: 10px;
+  border-radius: 999px;
+  padding: 1px 7px;
+  cursor: pointer;
+  flex: none;
+}
+
+.source-chip__snippet {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  background: #fffdf7;
+  border: 1px dashed var(--rule-strong);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.source-chip__highlight {
+  background: var(--highlight);
+  color: var(--ink);
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 600;
+}
